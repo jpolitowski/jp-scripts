@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+VERSION="1.1"
+
+# Version function
+show_version() {
+  echo "mergedev version $VERSION"
+}
+
+# Help function
+show_help() {
+  cat << HEREDOC
+mergedev - Git develop merge utility by John Politowski
+
+USAGE:
+    mergedev [OPTIONS]
+
+DESCRIPTION:
+    Merges the latest changes from the 'develop' branch into the current branch.
+    The script automatically switches to develop, pulls the latest changes,
+    switches back to your current branch, and merges develop into it.
+
+OPTIONS:
+    -h, --help       Show this help message and exit
+    -v, --version    Show version information and exit
+
+EXAMPLES:
+    mergedev         # Merge latest develop into current branch
+
+NOTES:
+    - Must be run from within a Git repository
+    - Will not run if you're already on the develop branch
+    - Uses --no-edit flag for automatic merge commits
+
+HEREDOC
+}
+
+# Check for help and version flags
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  show_help
+  exit 0
+fi
+
+if [ "$1" = "-v" ] || [ "$1" = "--version" ]; then
+  show_version
+  exit 0
+fi
+
+# Ensure we're inside a Git repo
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+  echo "❌ Not inside a Git repository."
+  exit 1
+fi
+
+# Get current branch name
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Bail if already on develop
+if [ "$CURRENT_BRANCH" = "develop" ]; then
+  echo "⚠️ You're already on 'develop'. Nothing to merge."
+  exit 1
+fi
+
+echo "📍 Merging 'develop' into '$CURRENT_BRANCH'..."
+
+# Fetch the latest develop branch without switching
+echo "🔄 Fetching latest develop..."
+git fetch origin develop:develop || exit 1
+
+# Merge develop into current branch
+git merge develop --no-edit || {
+  echo "❌ Merge failed. Resolve conflicts and try again."
+  exit 1
+}
+
+echo "✅ Merge completed successfully."
+

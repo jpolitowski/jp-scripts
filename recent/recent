@@ -1,0 +1,74 @@
+#!/bin/bash
+
+VERSION="1.2"
+
+# Version function
+show_version() {
+    echo "recent version $VERSION"
+}
+
+# Help function
+show_help() {
+    cat << HEREDOC
+recent - Git recent branches utility by John Politowski
+
+USAGE:
+    recent [OPTIONS]
+    recent [BRANCH_NUMBER]
+
+DESCRIPTION:
+    Creates a numbered list of the most recent local git branches.
+    When called with a branch number, checks out that branch.
+
+OPTIONS:
+    -h, --help       Show this help message and exit
+    -v, --version    Show version information and exit
+
+ARGUMENTS:
+    [BRANCH_NUMBER]  Number of the branch to checkout (from the numbered list)
+
+EXAMPLES:
+    recent           # Show numbered list of recent branches
+    recent 3         # Checkout the 3rd branch from the list
+
+HEREDOC
+}
+
+# Check for help and version flags
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_help
+    exit 0
+fi
+
+if [ "$1" = "-v" ] || [ "$1" = "--version" ]; then
+    show_version
+    exit 0
+fi
+
+# Get the list of branches
+branches=$(git for-each-ref --count=20 --sort=-committerdate refs/heads/ --format='%(refname:short)')
+
+# Check if there's an argument (a branch number)
+if [ -z "$1" ]; then
+    # If no argument, output numbered list of branches
+    i=1
+    while read -r branch; do
+        echo "$i) $branch"
+        i=$((i + 1))
+    done <<< "$branches"
+else
+    # If there's an argument, switch to the specified branch
+    branch_number=$1
+    if ! [[ "$branch_number" =~ ^[0-9]+$ ]]; then
+        echo "Invalid input: must be a number or a valid flag"
+        exit 1
+    fi
+
+    selected_branch=$(echo "$branches" | sed -n "${branch_number}p")
+    if [ -n "$selected_branch" ]; then
+        git checkout "$selected_branch"
+    else
+        echo "Invalid branch number"
+        exit 1
+    fi
+fi

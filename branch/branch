@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+VERSION="1.2"
+
+# Version function
+show_version() {
+  echo "branch version $VERSION"
+}
+
+# Help function
+show_help() {
+  cat << HEREDOC
+branch - Git branch searching/switching utility by John Politowski
+
+USAGE:
+    branch [OPTIONS] <branch-name-pattern>
+
+DESCRIPTION:
+    Searches for and switches to git branches matching the given pattern.
+    You can search for partial branch names (e.g. just the ticket number or some keywords).
+    If multiple branches match, displays all matches.
+    If no local branches match, searches remote branches.
+    If exactly one branch matches and it's not the current branch, switches to it.
+
+OPTIONS:
+    -h, --help       Show this help message and exit
+    -v, --version    Show version information and exit
+
+ARGUMENTS:
+    <branch-name-pattern>    Pattern to search for in branch names
+
+EXAMPLES:
+    branch develop           # Switch to develop branch
+    branch 1234              # Switch to specific branch by ticket number
+    branch feature-branch    # List all feature branches
+HEREDOC
+}
+
+# Check for help and version flags
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  show_help
+  exit 0
+fi
+
+if [ "$1" = "-v" ] || [ "$1" = "--version" ]; then
+  show_version
+  exit 0
+fi
+
+# Check if an argument was provided
+if [ -z "$1" ]; then
+  echo "Usage: $0 <branch-name-pattern>"
+  echo "Use '$0 --help' for more information."
+  exit 1
+fi
+
+BRANCH=$(git branch | grep "$1")
+CYAN='\033[0;36m'
+CURRENT="* "
+NC='\033[0m'
+NL=$'\n'
+
+case "$BRANCH" in
+  (*"$NL"*)
+    echo -e "${CYAN}Multiple matches found:${NC}"
+    echo "$BRANCH"
+    ;;
+  (*)
+    CLEANED="$(echo -e "${BRANCH}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    
+    if [[ "$CLEANED" == "$CURRENT"* ]]; then
+      echo -e "${CYAN}You already checked out the only result:${NC} $CLEANED$NL"
+    elif [ -z "$CLEANED" ]; then
+      echo -e "${CYAN}No local results found. Trying Remote:${NC}"
+      REMOTE=$(git branch -r | grep "$1")
+      if [ -z "$REMOTE" ]; then
+        echo "No remote results found. Try git fetch."
+      else
+        echo "$REMOTE"
+      fi
+    else
+      git checkout "$CLEANED"
+    fi
+    ;;
+esac
+

@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+VERSION="1.1"
+
+# Version function
+show_version() {
+  echo "pr version $VERSION"
+}
+
+# Help function
+show_help() {
+  cat << HEREDOC
+pr - GitHub Pull Request opener by John Politowski
+
+USAGE:
+    pr [OPTIONS]
+
+DESCRIPTION:
+    Opens a new GitHub pull request page in Chrome for the current branch.
+    Automatically detects the repository name from the Git remote URL
+    and constructs the appropriate GitHub PR URL.
+
+OPTIONS:
+    -h, --help       Show this help message and exit
+    -v, --version    Show version information and exit
+
+EXAMPLES:
+    pr               # Open PR page for current branch
+
+NOTES:
+    - Must be run from within a Git repository
+    - Opens PR page in your default browser
+    - Requires GITHUB_PR_ORG environment variable to be set
+    - Opens PR page with current branch as source
+
+CONFIGURATION:
+    You MUST set the GITHUB_PR_ORG environment variable:
+    
+    # Add to your ~/.zshrc or ~/.bash_profile:
+    export GITHUB_PR_ORG="your-org-name"
+    
+    # Or set temporarily:
+    GITHUB_PR_ORG="your-org-name" pr
+
+HEREDOC
+}
+
+# Check for help and version flags
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  show_help
+  exit 0
+fi
+
+if [ "$1" = "-v" ] || [ "$1" = "--version" ]; then
+  show_version
+  exit 0
+fi
+
+# Ensure we're inside a Git repo
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+  echo "❌ Not inside a Git repository."
+  exit 1
+fi
+
+# Extract repo name from Git remote URL
+REPO=$(basename -s .git "$(git config --get remote.origin.url)")
+
+# Fallback if remote URL is missing
+if [ -z "$REPO" ]; then
+  echo "❌ Could not determine repository name from remote.origin.url"
+  exit 1
+fi
+
+# Get current branch name
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Get GitHub organization (required)
+if [ -z "$GITHUB_PR_ORG" ]; then
+  echo "❌ GITHUB_PR_ORG environment variable is not set."
+  echo ""
+  echo "To make this permanent, add it to your shell profile:"
+  echo "  For zsh: echo 'export GITHUB_PR_ORG=\"your-organization\"' >> ~/.zshrc"
+  echo "  For bash (macOS): echo 'export GITHUB_PR_ORG=\"your-organization\"' >> ~/.bash_profile"
+  echo "  For bash (Linux): echo 'export GITHUB_PR_ORG=\"your-organization\"' >> ~/.bashrc"
+  echo ""
+  echo "Then reload your shell: source ~/.zshrc (or ~/.bash_profile or ~/.bashrc)"
+  echo ""
+  echo "Or run temporarily with: GITHUB_PR_ORG=\"your-org\" pr"
+  exit 1
+fi
+
+GITHUB_ORG="$GITHUB_PR_ORG"
+
+# Build GitHub PR URL
+URL="https://github.com/${GITHUB_ORG}/${REPO}/pull/new/${BRANCH}"
+
+# Open in default browser
+open "$URL"
+

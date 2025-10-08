@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+VERSION="1.1"
+
+# Version function
+show_version() {
+  echo "component version $VERSION"
+}
+
+# Help function
+show_help() {
+  cat << HEREDOC
+component - Test runner utility by John Politowski
+
+USAGE:
+    component [OPTIONS] <test-name-pattern>
+
+DESCRIPTION:
+    Runs component tests in watch mode with extended debug output limit.
+    Uses npm to run tests with coverage reporting and a higher DEBUG_PRINT_LIMIT
+    for better debugging output.
+
+OPTIONS:
+    -h, --help       Show this help message and exit
+    -v, --version    Show version information and exit
+
+ARGUMENTS:
+    <test-name-pattern>    Pattern to match test names or files
+
+EXAMPLES:
+    component Button         # Run tests matching "Button"
+    component Header.test    # Run specific test file
+
+NOTES:
+    - Sets DEBUG_PRINT_LIMIT=21000 for extended output
+    - Runs in watch mode for continuous testing
+    - Includes lcov coverage reporting
+    - Requires npm and appropriate test setup
+
+HEREDOC
+}
+
+# Check for help and version flags
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  show_help
+  exit 0
+fi
+
+if [ "$1" = "-v" ] || [ "$1" = "--version" ]; then
+  show_version
+  exit 0
+fi
+
+# Check if an argument (test name/pattern) was passed
+if [ -z "$1" ]; then
+  echo "Usage: $0 <test-name-pattern>"
+  echo "Use '$0 --help' for more information."
+  exit 1
+fi
+
+# Run test with DEBUG_PRINT_LIMIT
+DEBUG_PRINT_LIMIT=21000 npm run test:watch -- "$1" --coverageReporters=lcov
+
